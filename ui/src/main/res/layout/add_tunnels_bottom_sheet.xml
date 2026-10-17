@@ -9,6 +9,7 @@
     <com.google.android.material.button.MaterialButton
         android:id="@+id/create_from_file"
         style="@style/Widget.Material3.Button.TextButton.Icon"
+        android:visibility="gone"
         android:layout_width="match_parent"
         android:layout_height="@dimen/bottom_sheet_item_height"
         android:layout_marginStart="@dimen/normal_margin"
@@ -35,6 +36,7 @@
         android:layout_width="match_parent"
         android:layout_height="@dimen/bottom_sheet_item_height"
         android:layout_marginStart="@dimen/normal_margin"
+        android:visibility="gone"
         android:layout_marginLeft="@dimen/normal_margin"
         android:layout_marginEnd="@dimen/normal_margin"
         android:layout_marginRight="@dimen/normal_margin"
