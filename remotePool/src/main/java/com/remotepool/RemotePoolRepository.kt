@@ -2,6 +2,7 @@ package com.remotepool
 
 import com.google.gson.JsonElement
 import com.remotepool.models.AuthUser
+import com.remotepool.secrets.SecretsManager
 import okhttp3.OkHttpClient
 import okhttp3.ResponseBody
 import retrofit2.Response
@@ -47,10 +48,18 @@ private interface SecretsApi {
     ): ResponseBody
 }
 
-object RemotePoolRepository {
+class RemotePoolRepository(
+    private val secretsManager: SecretsManager
+) {
 
-    private const val BASE_URL = "https://cloud.api.selcloud.ru/"
-    private const val DEFAULT_PREFIX = "AWGConfig"
+    private companion object {
+        const val BASE_URL = "https://cloud.api.selcloud.ru/"
+        const val DEFAULT_PREFIX = "AWGConfig"
+
+        /** <Prefix><Number> format **/
+        fun buildPattern(prefix: String) =
+            Regex("^${Regex.escape(prefix)}(\\d+)$")
+    }
 
     @Volatile
     private var pattern: Regex = buildPattern(DEFAULT_PREFIX)
@@ -70,21 +79,20 @@ object RemotePoolRepository {
     private val identityApi: IdentityApi by lazy { retrofit.create(IdentityApi::class.java) }
     private val secretsApi: SecretsApi by lazy { retrofit.create(SecretsApi::class.java) }
 
-    /** <Prefix><Number> format **/
-    private fun buildPattern(prefix: String) =
-        Regex("^${Regex.escape(prefix)}(\\d+)$")
-
     fun setSearchedFormat(searchedPrefix: String) {
         pattern = buildPattern(searchedPrefix)
     }
 
     suspend fun getToken(credentials: AuthUser): String {
+        val password = credentials.revealPassword(secretsManager) ?:
+            throw IOException("User password does not found: ${credentials.toJson()}")
+
         val domain = KsDomain(credentials.accountId)
         val request = KsRequest(
             KsAuth(
                 identity = KsIdentity(
                     methods = listOf("password"),
-                    password = KsPassword(KsUser(credentials.username, domain, credentials.password))
+                    password = KsPassword(KsUser(credentials.username, domain, password))
                 ),
                 scope = KsScope(KsProject(credentials.projectName, domain))
             )
@@ -98,7 +106,6 @@ object RemotePoolRepository {
     }
 
     private data class Entry(val key: String, val number: Long)
-
 
     private suspend fun fetchEntries(token: String): List<Entry> {
         val p = pattern
