@@ -1,0 +1,59 @@
+/build
+# Gradle
+.gradle/
+build/
+**/build/
+buildSrc/build/
+buildSrc/.gradle/
+gradle-app.setting
+.gradletasknamecache
+
+# Локальная конфигурация (путь к SDK)
+local.properties
+
+# Android Studio / IntelliJ
+.idea/
+*.iml
+*.iws
+*.ipr
+.navigation/
+captures/
+out/
+
+# Сборка приложения
+*.apk
+*.aar
+*.ap_
+*.aab
+*.dex
+*.class
+
+# Kotlin / Compose
+.kotlin/
+*compose_metrics.txt
+*compose_reports.txt
+
+# NDK / CMake
+.externalNativeBuild/
+.cxx/
+*.so
+
+# Подписи (никогда не коммитить!)
+*.jks
+*.keystore
+key.properties
+
+# Логи и профилирование
+*.log
+*.hprof
+lint/intermediates/
+lint/generated/
+lint/outputs/
+lint/tmp/
+
+# Системные файлы
+.DS_Store
+Thumbs.db
+*~
+*.swp
+*.swo
