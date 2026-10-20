@@ -1,0 +1,16 @@
+.gradle
+.idea
+.kotlin
+gradle
+
+ui/sampledata
+ui/src/debug
+ui/src/main/res
+ui/src/main/java/org.amnezia.awg/widget
+ui/src/main/java/org.amnezia.awg/preference
+
+tunnel/src/test
+tunnel/.cxx
+tunnel/src/main/java/org.amnezia.awg/crypto
+tunnel/src/main/java/org.amnezia.awg/util
+tunnel/tools

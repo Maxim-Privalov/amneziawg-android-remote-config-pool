@@ -42,7 +42,7 @@ data class Pool(
     companion object {
         fun fromJson(json: String): Pool = gson.fromJson(json, Pool::class.java)
 
-        // Instant сериализуем явно (ISO-8601), а не рефлексией по его внутренним полям.
+        // Instant is serializable explicitly (ISO-8601), not by reflection on its internal fields.
         @SuppressLint("NewApi")
         private object InstantAdapter : JsonSerializer<Instant>, JsonDeserializer<Instant> {
             override fun serialize(src: Instant, type: Type, ctx: JsonSerializationContext): JsonElement =
