@@ -1,16 +1,11 @@
 package org.amnezia.awg.fragment
 
-import android.app.Dialog
-import android.os.Bundle
 import android.util.Log
 import android.view.View
-import android.view.WindowManager
 import android.widget.TextView
-import androidx.appcompat.app.AlertDialog
-import androidx.fragment.app.DialogFragment
-import androidx.fragment.app.FragmentManager
+import androidx.lifecycle.findViewTreeLifecycleOwner
 import androidx.lifecycle.lifecycleScope
-import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import com.google.android.material.button.MaterialButton
 import com.google.android.material.progressindicator.LinearProgressIndicator
 import com.google.android.material.textfield.TextInputEditText
 import com.google.android.material.textfield.TextInputLayout
@@ -29,7 +24,8 @@ import org.amnezia.awg.widget.NameInputFilter
  * Dialog for adding a remote pool: a name and a DSN (`selectel;<project>;<uid>;<user>;<password>`).
  * The pool shows up in the tunnel list as a regular tunnel, its config is fetched on connect.
  */
-class PoolDialogFragment : DialogFragment() {
+class PoolOverlayFragment(
+    /*
     private lateinit var nameLayout: TextInputLayout
     private lateinit var nameInput: TextInputEditText
     private lateinit var dsnLayout: TextInputLayout
@@ -113,14 +109,88 @@ class PoolDialogFragment : DialogFragment() {
         }
         isCancelable = !busy
     }
+     */
+    private val overlay: View,
+    private val onCreated: () -> Unit
+    ) {
+        private val nameLayout = overlay.findViewById<TextInputLayout>(R.id.pool_name_layout)
+        private val nameInput = overlay.findViewById<TextInputEditText>(R.id.pool_name_input)
+        private val dsnLayout = overlay.findViewById<TextInputLayout>(R.id.dsn_layout)
+        private val dsnInput = overlay.findViewById<TextInputEditText>(R.id.dsn_input)
+        private val errorText = overlay.findViewById<TextView>(R.id.error_text)
+        private val progress = overlay.findViewById<LinearProgressIndicator>(R.id.progress)
+        private val createBtn = overlay.findViewById<MaterialButton>(R.id.pool_create)
+        private val cancelBtn = overlay.findViewById<MaterialButton>(R.id.pool_cancel)
 
-    companion object {
-        private const val TAG = "AmneziaWG/PoolDialog"
-        private const val FRAGMENT_TAG = "POOL_DIALOG"
+        private val scope = overlay.findViewTreeLifecycleOwner()!!.lifecycleScope
 
-        fun show(fragmentManager: FragmentManager) {
-            if (fragmentManager.findFragmentByTag(FRAGMENT_TAG) == null)
-                PoolDialogFragment().show(fragmentManager, FRAGMENT_TAG)
+        init {
+            nameInput.filters = arrayOf(NameInputFilter.newInstance())
+            cancelBtn.setOnClickListener { close() }
+            createBtn.setOnClickListener { submit() }
         }
-    }
+
+        fun isOpen(): Boolean = overlay.visibility == View.VISIBLE
+
+        fun open() {
+            clearErrors()
+            overlay.visibility = View.VISIBLE
+            nameInput.requestFocus()
+        }
+
+        fun close() {
+            overlay.visibility = View.GONE
+            // по желанию — очистить поля:
+            nameInput.setText("")
+            dsnInput.setText("")
+            clearErrors()
+        }
+
+        private fun submit() {
+            clearErrors()
+            val name = nameInput.text.toString().trim()
+            val dsn = try {
+                PoolDsn.parse(dsnInput.text.toString())
+            } catch (e: InvalidDsnException) {
+                showError(e); return
+            }
+            setBusy(true)
+            scope.launch {
+                try {
+                    Application.getPoolManager().create(name, dsn.user, dsn.password)
+                    setBusy(false)
+                    close()
+                    onCreated()
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Throwable) {
+                    Log.e("PoolOverlay", "Unable to add pool", e)
+                    setBusy(false)
+                    showError(e)
+                }
+            }
+        }
+
+        private fun showError(e: Throwable) {
+            val message = ErrorMessages[e]
+            when (e) {
+                is InvalidPoolNameException, is PoolAlreadyExistsException -> nameLayout.error = message
+                is InvalidDsnException -> dsnLayout.error = message
+                else -> errorText.apply { text = message; visibility = View.VISIBLE }
+            }
+        }
+
+        private fun clearErrors() {
+            nameLayout.error = null
+            dsnLayout.error = null
+            errorText.visibility = View.GONE
+        }
+
+        private fun setBusy(busy: Boolean) {
+            progress.visibility = if (busy) View.VISIBLE else View.GONE
+            nameInput.isEnabled = !busy
+            dsnInput.isEnabled = !busy
+            createBtn.isEnabled = !busy
+            cancelBtn.isEnabled = !busy
+        }
 }

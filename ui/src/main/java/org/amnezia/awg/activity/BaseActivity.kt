@@ -5,13 +5,19 @@
 package org.amnezia.awg.activity
 
 import android.os.Bundle
+import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.databinding.CallbackRegistry
 import androidx.databinding.CallbackRegistry.NotifierCallback
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import org.amnezia.awg.Application
 import org.amnezia.awg.model.ObservableTunnel
 import kotlinx.coroutines.launch
+import org.amnezia.awg.R
+import org.amnezia.awg.fragment.PoolOverlayFragment
+import org.amnezia.awg.viewmodel.PoolOverlayViewModel
 
 /**
  * Base class for activities that need to remember the currently-selected tunnel.
@@ -36,6 +42,7 @@ abstract class BaseActivity : AppCompatActivity() {
     fun addOnSelectedTunnelChangedListener(listener: OnSelectedTunnelChangedListener) {
         selectionChangeRegistry.add(listener)
     }
+
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -89,7 +96,6 @@ abstract class BaseActivity : AppCompatActivity() {
 
     private class SelectionChangeRegistry :
         CallbackRegistry<OnSelectedTunnelChangedListener, ObservableTunnel, ObservableTunnel>(SelectionChangeNotifier())
-
     companion object {
         private const val KEY_SELECTED_TUNNEL = "selected_tunnel"
     }

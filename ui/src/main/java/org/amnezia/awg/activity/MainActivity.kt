@@ -11,14 +11,21 @@ import android.view.MenuItem
 import android.view.View
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.addCallback
+import androidx.activity.viewModels
 import androidx.appcompat.app.ActionBar
 import androidx.fragment.app.FragmentManager
 import androidx.fragment.app.FragmentTransaction
 import androidx.fragment.app.commit
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
+import kotlinx.coroutines.launch
 import org.amnezia.awg.R
+import org.amnezia.awg.fragment.PoolOverlayFragment
 import org.amnezia.awg.fragment.TunnelDetailFragment
 import org.amnezia.awg.fragment.TunnelEditorFragment
 import org.amnezia.awg.model.ObservableTunnel
+import org.amnezia.awg.viewmodel.PoolOverlayViewModel
 
 /**
  * CRUD interface for AmneziaWG tunnels. This activity serves as the main entry point to the
@@ -29,6 +36,9 @@ class MainActivity : BaseActivity(), FragmentManager.OnBackStackChangedListener 
     private var actionBar: ActionBar? = null
     private var isTwoPaneLayout = false
     private var backPressedCallback: OnBackPressedCallback? = null
+
+    private lateinit var poolOverlay: PoolOverlayFragment
+    private val poolOverlayVm: PoolOverlayViewModel by viewModels()
 
     private fun handleBackPressed() {
         val backStackEntries = supportFragmentManager.backStackEntryCount
@@ -63,6 +73,19 @@ class MainActivity : BaseActivity(), FragmentManager.OnBackStackChangedListener 
         supportFragmentManager.addOnBackStackChangedListener(this)
         backPressedCallback = onBackPressedDispatcher.addCallback(this) { handleBackPressed() }
         onBackStackChanged()
+
+        // updated overlay activity for DSN dialog
+
+        poolOverlay = PoolOverlayFragment(
+            overlay = findViewById(R.id.pool_overlay),
+            onCreated = { /* обновить список туннелей */ }
+        )
+
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                poolOverlayVm.open.collect { poolOverlay.open() }
+            }
+        }
     }
 
     override fun onCreateOptionsMenu(menu: Menu): Boolean {

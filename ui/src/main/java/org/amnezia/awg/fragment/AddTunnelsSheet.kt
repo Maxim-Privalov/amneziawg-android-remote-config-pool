@@ -15,16 +15,23 @@ import android.view.ViewTreeObserver
 import android.widget.FrameLayout
 import android.widget.TextView
 import androidx.core.os.bundleOf
+import androidx.fragment.app.activityViewModels
 import androidx.fragment.app.setFragmentResult
 import com.google.android.material.bottomsheet.BottomSheetBehavior
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment
 import org.amnezia.awg.R
+import org.amnezia.awg.activity.MainActivity
 import org.amnezia.awg.util.resolveAttribute
+import org.amnezia.awg.viewmodel.PoolOverlayViewModel
 
 class AddTunnelsSheet : BottomSheetDialogFragment() {
 
     private var behavior: BottomSheetBehavior<FrameLayout>? = null
+
+    private val poolOverlayVm: PoolOverlayViewModel by activityViewModels()
+
+
     private val bottomSheetCallback = object : BottomSheetBehavior.BottomSheetCallback() {
         override fun onSlide(bottomSheet: View, slideOffset: Float) {
         }
@@ -61,9 +68,8 @@ class AddTunnelsSheet : BottomSheetDialogFragment() {
                     addBottomSheetCallback(bottomSheetCallback)
                 }
                 dialog.findViewById<View>(R.id.create_empty)?.setOnClickListener {
-                    val fragmentManager = parentFragmentManager // taken before dismiss(), the sheet is detached after it
                     dismiss()
-                    PoolDialogFragment.show(fragmentManager)
+                    poolOverlayVm.requestOpen()
                 }
                 dialog.findViewById<View>(R.id.create_from_file)?.setOnClickListener {
                     dismiss()
