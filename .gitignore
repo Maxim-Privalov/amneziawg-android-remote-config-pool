@@ -18,3 +18,5 @@ gradlew.bat
 maint/
 
 tunnel/poolu.txt
+my-access-token
+*.patch
