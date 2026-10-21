@@ -1,4 +1,4 @@
-package com.remotepool
+package com.remotepool.exceptions
 
 /** Typed errors, so the UI can map them to localized strings (like TunnelManager does with R.string.*). */
 sealed class PoolException(message: String) : Exception(message)
@@ -14,6 +14,10 @@ class PoolNotFoundException(val poolName: String) :
 
 class RemoteConfigNotFoundException(val poolName: String) :
     PoolException("No matching config found in remote storage for pool \"$poolName\"")
+
+/** Name or credentials can't be changed while the pool is connected (or connecting). */
+class PoolBusyException(val poolName: String) :
+    PoolException("Pool \"$poolName\" is connected, disconnect it first")
 
 class InvalidDsnException(val reason: Reason, val detail: String? = null) :
     PoolException("Invalid DSN: $reason" + (detail?.let { " ($it)" } ?: "")) {

@@ -16,6 +16,9 @@ class TunnelManagerGateway(private val manager: TunnelManager) : TunnelGateway {
 
     override suspend fun containsTunnel(name: String) = manager.getTunnels().containsKey(name)
 
+    override suspend fun isActive(name: String) =
+        (manager.getTunnels()[name]?.state ?: Tunnel.State.DOWN) != Tunnel.State.DOWN
+
     override suspend fun addVirtualTunnel(name: String) {
         manager.addVirtualTunnel(name)
     }

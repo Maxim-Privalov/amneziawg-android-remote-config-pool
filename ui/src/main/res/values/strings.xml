@@ -281,4 +281,14 @@
     <string name="pool_error_dsn_empty">DSN fields must not be empty</string>
     <string name="pool_error_invalid_name">Invalid pool name “%s”</string>
     <string name="pool_error_already_exists">“%s” already exists</string>
+    <string name="pool_edit_title">Edit pool</string>
+    <string name="pool_dsn_keep_hint">Leave empty to keep the current credentials</string>
+    <string name="pool_error_busy">“%s” is connected. Disconnect it before editing</string>
+    <string name="pool_error_not_found">Pool “%s” not found</string>
+    <string name="pool_error_no_config">No config found in the remote storage for “%s”</string>
+    <string name="error_remote_auth">Authentication failed (HTTP %d). Check the project, user UID, username and password</string>
+    <string name="error_remote_http">The server returned an error (HTTP %d)</string>
+    <string name="error_network_unreachable">No connection to the server. Check your internet connection</string>
+    <string name="error_network_timeout">The server did not respond in time</string>
+    <string name="error_network_tls">Secure connection to the server failed</string>
 </resources>

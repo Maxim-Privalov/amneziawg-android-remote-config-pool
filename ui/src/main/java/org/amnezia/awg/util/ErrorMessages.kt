@@ -8,9 +8,14 @@ import android.content.res.Resources
 import android.os.RemoteException
 import com.google.zxing.ChecksumException
 import com.google.zxing.NotFoundException
-import com.remotepool.InvalidDsnException
-import com.remotepool.InvalidPoolNameException
-import com.remotepool.PoolAlreadyExistsException
+import com.remotepool.exceptions.InvalidDsnException
+import com.remotepool.exceptions.InvalidPoolNameException
+import com.remotepool.exceptions.PoolAlreadyExistsException
+import com.remotepool.exceptions.PoolBusyException
+import com.remotepool.exceptions.PoolNotFoundException
+import com.remotepool.exceptions.RemoteAuthException
+import com.remotepool.exceptions.RemoteConfigNotFoundException
+import com.remotepool.exceptions.RemoteHttpException
 import org.amnezia.awg.Application
 import org.amnezia.awg.R
 import org.amnezia.awg.backend.BackendException
@@ -21,7 +26,12 @@ import org.amnezia.awg.config.InetNetwork
 import org.amnezia.awg.config.ParseException
 import org.amnezia.awg.crypto.Key
 import org.amnezia.awg.crypto.KeyFormatException
+import java.net.ConnectException
 import java.net.InetAddress
+import java.net.NoRouteToHostException
+import java.net.SocketTimeoutException
+import java.net.UnknownHostException
+import javax.net.ssl.SSLException
 
 object ErrorMessages {
     private val BCE_REASON_MAP = mapOf(
@@ -101,6 +111,23 @@ object ErrorMessages {
             rootCause is InvalidPoolNameException -> resources.getString(R.string.pool_error_invalid_name, rootCause.poolName)
 
             rootCause is PoolAlreadyExistsException -> resources.getString(R.string.pool_error_already_exists, rootCause.poolName)
+
+            rootCause is PoolBusyException -> resources.getString(R.string.pool_error_busy, rootCause.poolName)
+
+            rootCause is PoolNotFoundException -> resources.getString(R.string.pool_error_not_found, rootCause.poolName)
+
+            rootCause is RemoteConfigNotFoundException -> resources.getString(R.string.pool_error_no_config, rootCause.poolName)
+
+            rootCause is RemoteAuthException -> resources.getString(R.string.error_remote_auth, rootCause.code)
+
+            rootCause is RemoteHttpException -> resources.getString(R.string.error_remote_http, rootCause.code)
+
+            rootCause is UnknownHostException || rootCause is ConnectException || rootCause is NoRouteToHostException ->
+                resources.getString(R.string.error_network_unreachable)
+
+            rootCause is SocketTimeoutException -> resources.getString(R.string.error_network_timeout)
+
+            rootCause is SSLException -> resources.getString(R.string.error_network_tls)
 
             rootCause is NotFoundException -> {
                 resources.getString(R.string.error_no_qr_found)

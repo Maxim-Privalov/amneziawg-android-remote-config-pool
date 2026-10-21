@@ -16,6 +16,9 @@ interface TunnelGateway {
 
     suspend fun containsTunnel(name: String): Boolean
 
+    /** True if the tunnel is up or switching (anything but down). */
+    suspend fun isActive(name: String): Boolean
+
     /** Adds a tunnel with no config and no file on disk, the config is fetched on connect. */
     suspend fun addVirtualTunnel(name: String)
 

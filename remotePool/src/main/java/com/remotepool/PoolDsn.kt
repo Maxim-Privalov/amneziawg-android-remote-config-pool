@@ -1,5 +1,6 @@
 package com.remotepool
 
+import com.remotepool.exceptions.InvalidDsnException
 import com.remotepool.models.AuthUser
 
 /**
@@ -21,7 +22,7 @@ class PoolDsn private constructor(
         const val PROVIDER_SELECTEL = "selectel"
         private const val FIELDS = 5
 
-        /** @throws InvalidDsnException */
+        /** @throws com.remotepool.exceptions.InvalidDsnException */
         fun parse(dsn: String): PoolDsn {
             val parts = dsn.trim().split(';', limit = FIELDS)
             if (parts.size != FIELDS) throw InvalidDsnException(InvalidDsnException.Reason.FORMAT)

@@ -111,8 +111,8 @@ class MainActivity : BaseActivity(), FragmentManager.OnBackStackChangedListener 
                     if (tunnel.state != Tunnel.State.DOWN)
                         Snackbar.make(findViewById(android.R.id.content), getString(R.string.pool_error_busy, tunnel.name), Snackbar.LENGTH_LONG).show()
                     else
-                        PoolOverlayFragment.showEdit(supportFragmentManager, tunnel.name)
-                    } else {
+                        poolOverlay.showEdit(tunnel.name)
+                } else {
                     supportFragmentManager.commit {
                         replace(R.id.detail_container, TunnelEditorFragment())
                         setTransition(FragmentTransaction.TRANSIT_FRAGMENT_FADE)

@@ -9,9 +9,9 @@ import com.google.android.material.button.MaterialButton
 import com.google.android.material.progressindicator.LinearProgressIndicator
 import com.google.android.material.textfield.TextInputEditText
 import com.google.android.material.textfield.TextInputLayout
-import com.remotepool.InvalidDsnException
-import com.remotepool.InvalidPoolNameException
-import com.remotepool.PoolAlreadyExistsException
+import com.remotepool.exceptions.InvalidDsnException
+import com.remotepool.exceptions.InvalidPoolNameException
+import com.remotepool.exceptions.PoolAlreadyExistsException
 import com.remotepool.PoolDsn
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch

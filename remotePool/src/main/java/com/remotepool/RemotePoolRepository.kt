@@ -1,8 +1,9 @@
 package com.remotepool
 
 import com.google.gson.JsonElement
+import com.remotepool.exceptions.RemoteAuthException
+import com.remotepool.exceptions.RemoteHttpException
 import com.remotepool.models.AuthUser
-import com.remotepool.secrets.SecretsManager
 import okhttp3.OkHttpClient
 import okhttp3.ResponseBody
 import retrofit2.Response
@@ -11,6 +12,7 @@ import retrofit2.converter.gson.GsonConverterFactory
 import retrofit2.http.Body
 import retrofit2.http.GET
 import retrofit2.http.Header
+import retrofit2.HttpException
 import retrofit2.http.POST
 import retrofit2.http.Path
 import retrofit2.http.Query
@@ -94,9 +96,7 @@ class RemotePoolRepository() {
         )
         print(request.toString())
         val response = identityApi.auth(request)
-        if (!response.isSuccessful) {
-            throw IOException("Selectel auth failed: HTTP ${response.code()}")
-        }
+        if (!response.isSuccessful) throw httpError(response.code())
         return response.headers()["X-Subject-Token"]
             ?: throw IOException("Selectel auth: X-Subject-Token header is missing")
     }
@@ -112,14 +112,25 @@ class RemotePoolRepository() {
         }
     }
 
-    suspend fun getAllConfigs(token: String): List<String> =
+    suspend fun getAllConfigs(token: String): List<String> = remote {
         fetchEntries(token)
             .sortedBy { it.number }
             .map { it.key }
+    }
 
-    suspend fun getLastConfig(token: String): String? {
-        val last = fetchEntries(token).maxByOrNull { it.number } ?: return null
-        return secretsApi.get(token, last.key).use { it.string() }
+    suspend fun getLastConfig(token: String): String? = remote {
+        val last = fetchEntries(token).maxByOrNull { it.number } ?: return@remote null
+        secretsApi.get(token, last.key).use { it.string() }
+    }
+
+    private fun httpError(code: Int): IOException =
+        if (code == 401 || code == 403) RemoteAuthException(code) else RemoteHttpException(code)
+
+    /** Retrofit throws HttpException for non-2xx; callers only know our own typed errors. */
+    private suspend fun <T> remote(block: suspend () -> T): T = try {
+        block()
+    } catch (e: HttpException) {
+        throw httpError(e.code())
     }
 
     private fun extractKeys(root: JsonElement): List<String> {

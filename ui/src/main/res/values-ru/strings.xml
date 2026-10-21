@@ -282,4 +282,14 @@
     <string name="pool_error_dsn_empty">Поля DSN не должны быть пустыми</string>
     <string name="pool_error_invalid_name">Недопустимое имя пула «%s»</string>
     <string name="pool_error_already_exists">«%s» уже существует</string>
+    <string name="pool_edit_title">Изменить пул</string>
+    <string name="pool_dsn_keep_hint">Оставьте пустым, чтобы сохранить текущие учётные данные</string>
+    <string name="pool_error_busy">«%s» подключён. Отключите его перед изменением</string>
+    <string name="pool_error_not_found">Пул «%s» не найден</string>
+    <string name="pool_error_no_config">В удалённом хранилище нет конфига для «%s»</string>
+    <string name="error_remote_auth">Ошибка аутентификации (HTTP %d). Проверьте проект, UID, имя пользователя и пароль</string>
+    <string name="error_remote_http">Сервер вернул ошибку (HTTP %d)</string>
+    <string name="error_network_unreachable">Нет соединения с сервером. Проверьте подключение к интернету</string>
+    <string name="error_network_timeout">Сервер не ответил вовремя</string>
+    <string name="error_network_tls">Не удалось установить защищённое соединение с сервером</string>
 </resources>

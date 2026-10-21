@@ -1,7 +1,12 @@
 package com.remotepool
 
 import android.util.Log
-import com.remotepool.BuildConfig
+import com.remotepool.exceptions.InvalidPoolNameException
+import com.remotepool.exceptions.PoolAlreadyExistsException
+import com.remotepool.exceptions.PoolBusyException
+import com.remotepool.exceptions.PoolNotFoundException
+import com.remotepool.exceptions.RemoteAuthException
+import com.remotepool.exceptions.RemoteConfigNotFoundException
 import com.remotepool.models.AuthUser
 import com.remotepool.models.Pool
 import com.remotepool.secrets.SecretsManager
@@ -17,7 +22,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
-import retrofit2.HttpException
 
 /**
  * Pool is a "virtual tunnel": it looks like a tunnel in the list, but behind it there is only access to a
@@ -190,6 +194,7 @@ class PoolManager(
     suspend fun setPoolName(name: String, newName: String): String = withContext(Dispatchers.Main.immediate) {
         val old = poolMap[name] ?: throw PoolNotFoundException(name)
         if (newName == name) return@withContext name
+        ensureIdle(name)
         checkNameAvailable(newName)
 
         // 1. file + poolName inside it. The cached token is bound to the old name and is not migrated: it is
@@ -211,14 +216,41 @@ class PoolManager(
         newName
     }
 
-    /** Replaces the account of the pool. The cached token belongs to the old account and is dropped. */
-    suspend fun setCredentials(name: String, remoteUser: AuthUser, password: String) =
+    /**
+     * Replaces the account of the pool. The cached token belongs to the old account and is dropped.
+     * With [verify] the new credentials are checked against the remote source first; if that fails
+     * nothing changes (the previous password is put back).
+     */
+    suspend fun setCredentials(name: String, remoteUser: AuthUser, password: String, verify: Boolean = true) =
         withContext(Dispatchers.Main.immediate) {
             val old = poolMap[name] ?: throw PoolNotFoundException(name)
+            ensureIdle(name)
             val updated = withContext(Dispatchers.IO) {
+                // whatever is stored under the NEW account's key right now (nothing, or the password of another
+                // pool with the same account, or our own old password when only the password changes)
+                val priorSecret = remoteUser.revealPassword(secretsManager)
+                val candidate = old.copy(remoteUser = remoteUser)
+                var tokenSet = false
                 remoteUser.setPassword(password, secretsManager)
-                old.clearToken(secretsManager)
-                old.copy(remoteUser = remoteUser).also { poolStore.save(it) }
+                try {
+                    if (verify) {
+                        candidate.setToken(repository.getToken(remoteUser, password), secretsManager)
+                        tokenSet = true
+                    } else {
+                        old.clearToken(secretsManager)
+                    }
+                    poolStore.save(candidate)
+                } catch (e: Throwable) {
+                    withContext(NonCancellable) {
+                        runCatching {
+                            if (priorSecret != null) remoteUser.setPassword(priorSecret, secretsManager)
+                            else secretsManager.removeSecret(remoteUser.toJson())
+                            if (tokenSet) candidate.clearToken(secretsManager)
+                        }
+                    }
+                    throw e
+                }
+                candidate
             }
             poolMap[name] = updated
             publish()
@@ -243,9 +275,8 @@ class PoolManager(
             remoteMutex.withLock {
                 try {
                     repository.getLastConfig(obtainToken(pool, forceRefresh = false))
-                } catch (e: HttpException) {
+                } catch (e: RemoteAuthException) {
                     // token revoked before our own expiry timer fired: one retry with a fresh one
-                    if (e.code() != 401 && e.code() != 403) throw e
                     repository.getLastConfig(obtainToken(pool, forceRefresh = true))
                 } ?: throw RemoteConfigNotFoundException(name)
             }
@@ -255,7 +286,9 @@ class PoolManager(
     private suspend fun obtainToken(pool: Pool, forceRefresh: Boolean): String {
         if (!forceRefresh && !pool.checkTokenExpired())
             pool.revealToken(secretsManager)?.let { return it }
-        val password = pool.remoteUser.revealPassword(secretsManager) ?: throw RemoteConfigNotFoundException("user password doesn't found: ${pool.poolName}")
+        val password = pool.remoteUser.revealPassword(secretsManager) ?: throw RemoteConfigNotFoundException(
+            "user password doesn't found: ${pool.poolName}"
+        )
         val token = repository.getToken(pool.remoteUser, password)
         pool.setToken(token, secretsManager)
         // persists lastTokenCreated; failing to do so only costs one extra login after a restart
@@ -264,6 +297,11 @@ class PoolManager(
     }
 
     // endregion
+
+    /** Name and credentials of a pool that is connected must not change under the running tunnel. */
+    private suspend fun ensureIdle(name: String) {
+        if (tunnels.isActive(name)) throw PoolBusyException(name)
+    }
 
     private suspend fun checkNameAvailable(name: String) {
         if (PoolStore.isNameInvalid(name) || tunnels.isNameInvalid(name))
