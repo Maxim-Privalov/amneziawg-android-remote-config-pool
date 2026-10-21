@@ -14,11 +14,14 @@ import com.remotepool.storage.PoolStore
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import com.remotepool.PoolConnectionException.Stage
+import com.remotepool.exceptions.PoolException
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
@@ -272,16 +275,48 @@ class PoolManager(
     suspend fun fetchConfigText(name: String): String? {
         val pool = withContext(Dispatchers.Main.immediate) { poolMap[name] } ?: return null
         return withContext(Dispatchers.IO) {
+            var token = stage(Stage.AUTH) { obtainToken(pool, forceRefresh = false) }
             remoteMutex.withLock {
                 try {
-                    repository.getLastConfig(obtainToken(pool, forceRefresh = false))
-                } catch (e: RemoteAuthException) {
-                    // token revoked before our own expiry timer fired: one retry with a fresh one
-                    repository.getLastConfig(obtainToken(pool, forceRefresh = true))
-                } ?: throw RemoteConfigNotFoundException(name)
+                    downloadConfig(pool, token)
+                } catch (e: PoolConnectionException) {
+                    if (e.stage != Stage.DOWNLOAD || e.cause !is RemoteAuthException) throw e
+                    token = stage(Stage.AUTH) { obtainToken(pool, forceRefresh = true) }
+                    downloadConfig(pool, token)
+                }
             }
         }
     }
+
+    private suspend fun downloadConfig(pool: Pool, token: String): String = stage(Stage.DOWNLOAD) {
+        repository.getLastConfig(token) ?: throw RemoteConfigNotFoundException(pool.poolName)
+    }
+
+    /** Tags failures of a pipeline step with the step. Cancellation and our own typed errors pass through. */
+    private suspend fun <T> stage(stage: Stage, block: suspend () -> T): T =
+        try {
+            block()
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: PoolException) {
+            throw e
+        } catch (e: Exception) {
+            throw PoolConnectionException(stage, e)
+        }
+   /**
+    * Marks the pool as busy while [block] (fetch config + bring the tunnel up) runs, so that its name and
+    * credentials can't be changed halfway through a connect, when the tunnel state is still DOWN.
+    */
+    suspend fun <T> withConnection(name: String, block: suspend () -> T): T = withContext(Dispatchers.Main.immediate) {
+        connecting[name] = (connecting[name] ?: 0) + 1
+        try {
+            block()
+        } finally {
+            val left = (connecting[name] ?: 1) - 1
+            if (left > 0) connecting[name] = left else connecting.remove(name)
+        }
+    }
+
 
     private suspend fun obtainToken(pool: Pool, forceRefresh: Boolean): String {
         if (!forceRefresh && !pool.checkTokenExpired())

@@ -15,6 +15,7 @@ import com.remotepool.exceptions.PoolBusyException
 import com.remotepool.exceptions.PoolNotFoundException
 import com.remotepool.exceptions.RemoteAuthException
 import com.remotepool.exceptions.RemoteConfigNotFoundException
+import com.remotepool.PoolConnectionException
 import com.remotepool.exceptions.RemoteHttpException
 import org.amnezia.awg.Application
 import org.amnezia.awg.R
@@ -78,9 +79,19 @@ object ErrorMessages {
         RootShellException.Reason.CREATE_TEMP_DIR_ERROR to R.string.create_temp_dir_error
     )
 
+    private val STAGE_MAP = mapOf(
+        PoolConnectionException.Stage.AUTH to R.string.pool_stage_auth,
+        PoolConnectionException.Stage.DOWNLOAD to R.string.pool_stage_download,
+        PoolConnectionException.Stage.PARSE to R.string.pool_stage_parse
+    )
+
     operator fun get(throwable: Throwable?): String {
         val resources = Application.get().resources
         if (throwable == null) return resources.getString(R.string.unknown_error)
+        // pool connect pipeline: "<what we were doing>: <why it failed>"
+        val failedStage = generateSequence(throwable) { it.cause }.filterIsInstance<PoolConnectionException>().firstOrNull()
+        if (failedStage != null)
+            return resources.getString(STAGE_MAP.getValue(failedStage.stage), get(failedStage.cause))
         val rootCause = rootCause(throwable)
         return when {
             rootCause is BadConfigException -> {

@@ -103,7 +103,8 @@ class ObservableTunnel internal constructor(
     @get:Bindable
     var config = config
         get() {
-            if (field == null)
+            if (field == null && !getPoolManager().isPool(name))
+            // Pools have no stored config on purpose (it is fetched on connect), nothing to load here.
             // Opportunistically fetch this if we don't have a cached one, and rely on data bindings to update it eventually
                 applicationScope.launch {
                     try {

@@ -291,4 +291,7 @@
     <string name="error_network_unreachable">No connection to the server. Check your internet connection</string>
     <string name="error_network_timeout">The server did not respond in time</string>
     <string name="error_network_tls">Secure connection to the server failed</string>
+    <string name="pool_stage_auth">Couldn’t sign in to the remote storage: %s</string>
+    <string name="pool_stage_download">Couldn’t download the config: %s</string>
+    <string name="pool_stage_parse">The downloaded config is invalid: %s</string>
 </resources>

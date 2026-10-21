@@ -292,4 +292,7 @@
     <string name="error_network_unreachable">Нет соединения с сервером. Проверьте подключение к интернету</string>
     <string name="error_network_timeout">Сервер не ответил вовремя</string>
     <string name="error_network_tls">Не удалось установить защищённое соединение с сервером</string>
+    <string name="pool_stage_auth">Не удалось войти в удалённое хранилище: %s</string>
+    <string name="pool_stage_download">Не удалось скачать конфиг: %s</string>
+    <string name="pool_stage_parse">Скачанный конфиг некорректен: %s</string>
 </resources>

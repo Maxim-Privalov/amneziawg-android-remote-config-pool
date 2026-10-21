@@ -27,6 +27,9 @@ import org.amnezia.awg.util.ErrorMessages
 import org.amnezia.awg.util.UserKnobs
 import org.amnezia.awg.util.applicationScope
 import org.amnezia.awg.config.Config
+import com.remotepool.PoolConnectionException
+import com.remotepool.PoolNotFoundException
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -63,12 +66,20 @@ class TunnelManager(private val configStore: ConfigStore) : BaseObservable() {
         addToList(name, null, if (running.contains(name)) Tunnel.State.UP else Tunnel.State.DOWN)
     }
 
+    /**
+     * Connect pipeline of a pool, steps 1-5: pool -> token (refreshed if expired) -> latest remote config -> parse.
+     * The config is returned for the backend only: it is not written to the config store and not cached on the
+     * tunnel (tunnel.config stays null), so every connect downloads and parses a fresh one.
+     */
     private suspend fun loadPoolConfig(tunnel: ObservableTunnel): Config {
-        val text = getPoolManager().fetchConfigText(tunnel.name)
-            ?: throw IllegalStateException("\"${tunnel.name}\" is not a pool")
-        val config = withContext(Dispatchers.IO) { Config.parse(ByteArrayInputStream(text.toByteArray(Charsets.UTF_8))) }
-        // kept in memory only, never written to the config store
-        return tunnel.onConfigChanged(config)!!
+        val text = getPoolManager().fetchConfigText(tunnel.name) ?: throw PoolNotFoundException(tunnel.name)
+        try {
+            return withContext(Dispatchers.IO) { Config.parse(ByteArrayInputStream(text.toByteArray(Charsets.UTF_8))) }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            throw PoolConnectionException(PoolConnectionException.Stage.PARSE, e)
+        }
     }
 
     suspend fun create(name: String, config: Config?): ObservableTunnel = withContext(Dispatchers.Main.immediate) {
@@ -249,12 +260,23 @@ class TunnelManager(private val configStore: ConfigStore) : BaseObservable() {
     }
 
     suspend fun setTunnelState(tunnel: ObservableTunnel, state: Tunnel.State): Tunnel.State = withContext(Dispatchers.Main.immediate) {
+        // a pool is busy for the whole connect (token, download, parse, backend), not only once the state is UP
+        if (state == Tunnel.State.UP && isPoolTunnel(tunnel))
+            getPoolManager().withConnection(tunnel.name) { applyTunnelState(tunnel, state) }
+        else
+            applyTunnelState(tunnel, state)
+    }
+
+    private suspend fun applyTunnelState(tunnel: ObservableTunnel, state: Tunnel.State): Tunnel.State {
         var newState = tunnel.state
         var throwable: Throwable? = null
         try {
             val config: Config? = when {
                 !isPoolTunnel(tunnel) -> tunnel.getConfigAsync()
-                state == Tunnel.State.UP -> loadPoolConfig(tunnel) // login + download, may throw
+                state == Tunnel.State.UP -> {
+                    tunnel.onConnectionStatusChanged(ObservableTunnel.ConnectionStatus.CONNECTING) // shown while token/config load
+                    loadPoolConfig(tunnel) // login + download + parse, may throw
+                }
                 else -> null // DOWN needs no config, and tunnel.config would try to load one
             }
             newState = withContext(Dispatchers.IO) { getBackend().setState(tunnel, state, config) }
@@ -267,7 +289,7 @@ class TunnelManager(private val configStore: ConfigStore) : BaseObservable() {
         saveState()
         if (throwable != null)
             throw throwable
-        newState
+        return newState
     }
 
     class IntentReceiver : BroadcastReceiver() {
