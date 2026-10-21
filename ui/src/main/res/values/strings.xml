@@ -273,5 +273,12 @@
     <string name="tunnel_status_connected">Connected</string>
     <string name="tunnel_status_connecting">Connecting…</string>
     <string name="dialog_title_pool_connection">Add connection</string>
-    <string name="dsn_format_info_dialog">Format&#10;address:port;username;password</string>
+    <string name="dsn_format_info_dialog">Format&#10;selectel;projectName;userUID;username;password</string>
+    <string name="pool_name">Pool name</string>
+    <string name="pool_dsn">DSN</string>
+    <string name="pool_error_dsn_format">Expected: selectel;projectName;userUID;username;password</string>
+    <string name="pool_error_dsn_provider">Unsupported provider “%s”, only selectel is supported</string>
+    <string name="pool_error_dsn_empty">DSN fields must not be empty</string>
+    <string name="pool_error_invalid_name">Invalid pool name “%s”</string>
+    <string name="pool_error_already_exists">“%s” already exists</string>
 </resources>

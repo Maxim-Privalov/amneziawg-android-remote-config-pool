@@ -14,3 +14,8 @@ class PoolNotFoundException(val poolName: String) :
 
 class RemoteConfigNotFoundException(val poolName: String) :
     PoolException("No matching config found in remote storage for pool \"$poolName\"")
+
+class InvalidDsnException(val reason: Reason, val detail: String? = null) :
+    PoolException("Invalid DSN: $reason" + (detail?.let { " ($it)" } ?: "")) {
+    enum class Reason { FORMAT, PROVIDER, EMPTY_FIELD }
+}

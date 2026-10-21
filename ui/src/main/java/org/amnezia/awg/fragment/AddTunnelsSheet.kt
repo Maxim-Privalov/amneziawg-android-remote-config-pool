@@ -4,7 +4,6 @@
  */
 package org.amnezia.awg.fragment
 
-import android.content.Context
 import android.content.pm.PackageManager
 import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
@@ -13,8 +12,6 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.view.ViewTreeObserver
-import android.view.WindowManager
-import android.view.inputmethod.InputMethodManager
 import android.widget.FrameLayout
 import android.widget.TextView
 import androidx.core.os.bundleOf
@@ -22,8 +19,6 @@ import androidx.fragment.app.setFragmentResult
 import com.google.android.material.bottomsheet.BottomSheetBehavior
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment
-import com.google.android.material.dialog.MaterialAlertDialogBuilder
-import com.google.android.material.textfield.TextInputEditText
 import org.amnezia.awg.R
 import org.amnezia.awg.util.resolveAttribute
 
@@ -66,36 +61,9 @@ class AddTunnelsSheet : BottomSheetDialogFragment() {
                     addBottomSheetCallback(bottomSheetCallback)
                 }
                 dialog.findViewById<View>(R.id.create_empty)?.setOnClickListener {
-                    val ctx = requireContext()                                   // берём до dismiss()
-                    val content = layoutInflater.inflate(R.layout.dialog_input, null)
-                    val input = content.findViewById<TextInputEditText>(R.id.input)
-                    dismiss()                                                    // закрыть шторку
-                    MaterialAlertDialogBuilder(ctx)
-                        .setTitle(ctx.getString(R.string.dialog_title_pool_connection))
-                        .setView(content)
-                        .setPositiveButton("OK") { _, _ ->
-                            val text = input.text.toString()
-                            // использовать text
-                        }
-                        .setNegativeButton("Отмена", null)
-                        .create()
-                        .apply {
-                            setOnShowListener {
-                                window?.apply {
-                                    clearFlags(
-                                        WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
-                                                or WindowManager.LayoutParams.FLAG_ALT_FOCUSABLE_IM
-                                    )
-                                    setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE)
-                                }
-                            }
-                            show()
-                            input.requestFocus()
-                            input.post {
-                                val imm = ctx.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
-                                imm.showSoftInput(input, InputMethodManager.SHOW_IMPLICIT)
-                            }
-                        }
+                    val fragmentManager = parentFragmentManager // taken before dismiss(), the sheet is detached after it
+                    dismiss()
+                    PoolDialogFragment.show(fragmentManager)
                 }
                 dialog.findViewById<View>(R.id.create_from_file)?.setOnClickListener {
                     dismiss()

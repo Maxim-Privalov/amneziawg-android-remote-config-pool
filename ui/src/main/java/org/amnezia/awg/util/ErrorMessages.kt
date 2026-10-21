@@ -8,6 +8,9 @@ import android.content.res.Resources
 import android.os.RemoteException
 import com.google.zxing.ChecksumException
 import com.google.zxing.NotFoundException
+import com.remotepool.InvalidDsnException
+import com.remotepool.InvalidPoolNameException
+import com.remotepool.PoolAlreadyExistsException
 import org.amnezia.awg.Application
 import org.amnezia.awg.R
 import org.amnezia.awg.backend.BackendException
@@ -88,6 +91,16 @@ object ErrorMessages {
             rootCause is RootShellException -> {
                 resources.getString(RSE_REASON_MAP.getValue(rootCause.reason), *rootCause.format)
             }
+
+            rootCause is InvalidDsnException -> when (rootCause.reason) {
+                InvalidDsnException.Reason.FORMAT -> resources.getString(R.string.pool_error_dsn_format)
+                InvalidDsnException.Reason.PROVIDER -> resources.getString(R.string.pool_error_dsn_provider, rootCause.detail)
+                InvalidDsnException.Reason.EMPTY_FIELD -> resources.getString(R.string.pool_error_dsn_empty)
+            }
+
+            rootCause is InvalidPoolNameException -> resources.getString(R.string.pool_error_invalid_name, rootCause.poolName)
+
+            rootCause is PoolAlreadyExistsException -> resources.getString(R.string.pool_error_already_exists, rootCause.poolName)
 
             rootCause is NotFoundException -> {
                 resources.getString(R.string.error_no_qr_found)

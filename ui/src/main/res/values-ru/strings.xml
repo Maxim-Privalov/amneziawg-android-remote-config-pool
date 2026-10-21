@@ -274,5 +274,12 @@
     <string name="tunnel_status_connected">Подключено</string>
     <string name="tunnel_status_connecting">Подключение…</string>
     <string name="dialog_title_pool_connection">Добавить соединение</string>
-    <string name="dsn_format_info_dialog">Формат&#10;адрес:порт;пользователь;пароль</string>
+    <string name="dsn_format_info_dialog">Формат&#10;selectel;проект;UID пользователя;имя пользователя;пароль</string>
+    <string name="pool_name">Имя пула</string>
+    <string name="pool_dsn">DSN</string>
+    <string name="pool_error_dsn_format">Ожидается: selectel;проект;UID пользователя;имя пользователя;пароль</string>
+    <string name="pool_error_dsn_provider">Провайдер «%s» не поддерживается, доступен только selectel</string>
+    <string name="pool_error_dsn_empty">Поля DSN не должны быть пустыми</string>
+    <string name="pool_error_invalid_name">Недопустимое имя пула «%s»</string>
+    <string name="pool_error_already_exists">«%s» уже существует</string>
 </resources>
