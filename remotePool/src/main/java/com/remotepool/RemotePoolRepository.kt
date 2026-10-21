@@ -24,8 +24,7 @@ private data class KsUser(val name: String, val domain: KsDomain, val password: 
 private data class KsPassword(val user: KsUser)
 private data class KsIdentity(val methods: List<String>, val password: KsPassword)
 private data class KsProject(val name: String, val domain: KsDomain)
-private data class KsScope(val project: KsProject)
-private data class KsAuth(val identity: KsIdentity, val scope: KsScope)
+private data class KsAuth(val identity: KsIdentity, val project: KsProject)
 private data class KsRequest(val auth: KsAuth)
 
 
@@ -90,9 +89,10 @@ class RemotePoolRepository() {
                     methods = listOf("password"),
                     password = KsPassword(KsUser(credentials.username, domain, password))
                 ),
-                scope = KsScope(KsProject(credentials.projectName, domain))
+                project = KsProject(credentials.projectName, domain)
             )
         )
+        print(request.toString())
         val response = identityApi.auth(request)
         if (!response.isSuccessful) {
             throw IOException("Selectel auth failed: HTTP ${response.code()}")

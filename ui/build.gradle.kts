@@ -79,7 +79,7 @@ dependencies {
     implementation(libs.google.material)
     implementation(libs.zxing.android.embedded)
     implementation(libs.kotlinx.coroutines.android)
-    coreLibraryDesugaring(libs.desugarJdkLibs)
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
 }
 
 tasks.withType<JavaCompile>().configureEach {

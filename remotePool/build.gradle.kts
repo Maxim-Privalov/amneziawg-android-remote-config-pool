@@ -4,7 +4,7 @@ plugins {
 }
 
 android {
-    namespace = "com.experum.remotepool"
+    namespace = "com.remotepool"
     compileSdk {
         version = release(36)
     }
@@ -44,6 +44,7 @@ dependencies {
     implementation("androidx.datastore:datastore-preferences:1.1.1")
     implementation("com.google.crypto.tink:tink-android:1.15.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
+    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.8.1")
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.espresso.core)

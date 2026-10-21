@@ -122,7 +122,7 @@ class Application : android.app.Application() {
         poolManager = PoolManager(
             poolStore = PoolStore(File(filesDir, "pools")),
             secretsManager = secretsManager,
-            repository = RemotePoolRepository(secretsManager),
+            repository = RemotePoolRepository(),
             tunnels = TunnelManagerGateway(tunnelManager),
             scope = coroutineScope,
             nameComparator = TunnelComparator
