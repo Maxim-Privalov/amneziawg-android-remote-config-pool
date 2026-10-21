@@ -21,7 +21,10 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import kotlinx.coroutines.launch
 import org.amnezia.awg.R
+import org.amnezia.awg.backend.Tunnel
 import org.amnezia.awg.fragment.PoolOverlayFragment
+import com.google.android.material.snackbar.Snackbar
+import org.amnezia.awg.Application
 import org.amnezia.awg.fragment.TunnelDetailFragment
 import org.amnezia.awg.fragment.TunnelEditorFragment
 import org.amnezia.awg.model.ObservableTunnel
@@ -102,10 +105,19 @@ class MainActivity : BaseActivity(), FragmentManager.OnBackStackChangedListener 
             }
 
             R.id.menu_action_edit -> {
-                supportFragmentManager.commit {
-                    replace(R.id.detail_container, TunnelEditorFragment())
-                    setTransition(FragmentTransaction.TRANSIT_FRAGMENT_FADE)
-                    addToBackStack(null)
+                val tunnel = selectedTunnel
+                if (tunnel != null && Application.getPoolManager().isPool(tunnel.name)) {
+                    // a pool has no config to edit, only its name and credentials, and not while it's connected
+                    if (tunnel.state != Tunnel.State.DOWN)
+                        Snackbar.make(findViewById(android.R.id.content), getString(R.string.pool_error_busy, tunnel.name), Snackbar.LENGTH_LONG).show()
+                    else
+                        PoolOverlayFragment.showEdit(supportFragmentManager, tunnel.name)
+                    } else {
+                    supportFragmentManager.commit {
+                        replace(R.id.detail_container, TunnelEditorFragment())
+                        setTransition(FragmentTransaction.TRANSIT_FRAGMENT_FADE)
+                        addToBackStack(null)
+                    }
                 }
                 true
             }
