@@ -1,7 +1,7 @@
 package com.remotepool
 
 import android.util.Log
-import com.experum.remotepool.BuildConfig
+import com.remotepool.BuildConfig
 import com.remotepool.models.AuthUser
 import com.remotepool.models.Pool
 import com.remotepool.secrets.SecretsManager
@@ -146,7 +146,7 @@ class PoolManager(
         try {
             withContext(Dispatchers.IO) {
                 remoteUser.setPassword(password, secretsManager)
-                if (verify) pool.setToken(repository.getToken(remoteUser), secretsManager)
+                if (verify) pool.setToken(repository.getToken(remoteUser, password), secretsManager)
                 poolStore.create(pool)
                 stored = true
             }
@@ -255,7 +255,8 @@ class PoolManager(
     private suspend fun obtainToken(pool: Pool, forceRefresh: Boolean): String {
         if (!forceRefresh && !pool.checkTokenExpired())
             pool.revealToken(secretsManager)?.let { return it }
-        val token = repository.getToken(pool.remoteUser)
+        val password = pool.remoteUser.revealPassword(secretsManager) ?: throw RemoteConfigNotFoundException("user password doesn't found: ${pool.poolName}")
+        val token = repository.getToken(pool.remoteUser, password)
         pool.setToken(token, secretsManager)
         // persists lastTokenCreated; failing to do so only costs one extra login after a restart
         runCatching { poolStore.save(pool) }.onFailure { Log.w(TAG, "Couldn't persist token timestamp", it) }

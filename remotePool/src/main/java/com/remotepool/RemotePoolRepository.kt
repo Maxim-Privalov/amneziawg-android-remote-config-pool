@@ -48,9 +48,7 @@ private interface SecretsApi {
     ): ResponseBody
 }
 
-class RemotePoolRepository(
-    private val secretsManager: SecretsManager
-) {
+class RemotePoolRepository() {
 
     private companion object {
         const val BASE_URL = "https://cloud.api.selcloud.ru/"
@@ -83,9 +81,7 @@ class RemotePoolRepository(
         pattern = buildPattern(searchedPrefix)
     }
 
-    suspend fun getToken(credentials: AuthUser): String {
-        val password = credentials.revealPassword(secretsManager) ?:
-            throw IOException("User password does not found: ${credentials.toJson()}")
+    suspend fun getToken(credentials: AuthUser, password: String): String {
 
         val domain = KsDomain(credentials.accountId)
         val request = KsRequest(
