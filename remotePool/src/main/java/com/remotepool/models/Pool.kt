@@ -34,6 +34,11 @@ data class Pool(
 
     suspend fun revealToken(secretsManager : SecretsManager) : String? = secretsManager.getSecret(poolName + "_token")
 
+    suspend fun clearToken(secretsManager: SecretsManager) {
+        secretsManager.removeSecret(poolName + "_token")
+        lastTokenCreated = null
+    }
+
     fun withName(newName: String): Pool =
         copy(poolName = newName).also { it.lastTokenCreated = lastTokenCreated }
 

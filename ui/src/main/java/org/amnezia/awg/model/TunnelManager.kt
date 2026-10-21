@@ -14,6 +14,7 @@ import androidx.databinding.BaseObservable
 import androidx.databinding.Bindable
 import org.amnezia.awg.Application.Companion.get
 import org.amnezia.awg.Application.Companion.getBackend
+import org.amnezia.awg.Application.Companion.getPoolManager
 import org.amnezia.awg.Application.Companion.getTunnelManager
 import org.amnezia.awg.BR
 import org.amnezia.awg.R
@@ -34,6 +35,7 @@ import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.io.ByteArrayInputStream
 
 /**
  * Maintains and mediates changes to the set of available AmneziaWG tunnels,
@@ -51,6 +53,23 @@ class TunnelManager(private val configStore: ConfigStore) : BaseObservable() {
     }
 
     suspend fun getTunnels(): ObservableSortedKeyedArrayList<String, ObservableTunnel> = tunnels.await()
+
+    /** A tunnel that is backed by a remote pool: no config file, the config is fetched when it goes UP. */
+    private fun isPoolTunnel(tunnel: ObservableTunnel) = getPoolManager().isPool(tunnel.name)
+
+    /** Adds a config-less, file-less tunnel for a pool (see PoolManager). */
+    suspend fun addVirtualTunnel(name: String): ObservableTunnel = withContext(Dispatchers.Main.immediate) {
+        val running = withContext(Dispatchers.IO) { getBackend().runningTunnelNames }
+        addToList(name, null, if (running.contains(name)) Tunnel.State.UP else Tunnel.State.DOWN)
+    }
+
+    private suspend fun loadPoolConfig(tunnel: ObservableTunnel): Config {
+        val text = getPoolManager().fetchConfigText(tunnel.name)
+            ?: throw IllegalStateException("\"${tunnel.name}\" is not a pool")
+        val config = withContext(Dispatchers.IO) { Config.parse(ByteArrayInputStream(text.toByteArray(Charsets.UTF_8))) }
+        // kept in memory only, never written to the config store
+        return tunnel.onConfigChanged(config)!!
+    }
 
     suspend fun create(name: String, config: Config?): ObservableTunnel = withContext(Dispatchers.Main.immediate) {
         if (Tunnel.isNameInvalid(name))
@@ -71,7 +90,8 @@ class TunnelManager(private val configStore: ConfigStore) : BaseObservable() {
             if (originalState == Tunnel.State.UP)
                 withContext(Dispatchers.IO) { getBackend().setState(tunnel, Tunnel.State.DOWN, null) }
             try {
-                withContext(Dispatchers.IO) { configStore.delete(tunnel.name) }
+                if (!isPoolTunnel(tunnel))
+                    withContext(Dispatchers.IO) { configStore.delete(tunnel.name) }
             } catch (e: Throwable) {
                 if (originalState == Tunnel.State.UP)
                     withContext(Dispatchers.IO) { getBackend().setState(tunnel, Tunnel.State.UP, tunnel.config) }
@@ -96,6 +116,8 @@ class TunnelManager(private val configStore: ConfigStore) : BaseObservable() {
         }
 
     suspend fun getTunnelConfig(tunnel: ObservableTunnel): Config = withContext(Dispatchers.Main.immediate) {
+        // never hit the network from a data-binding getter: a pool config is resolved on connect only
+        check(!isPoolTunnel(tunnel)) { "Pool tunnel has no stored config" }
         tunnel.onConfigChanged(withContext(Dispatchers.IO) { configStore.load(tunnel.name) })!!
     }
 
@@ -163,14 +185,14 @@ class TunnelManager(private val configStore: ConfigStore) : BaseObservable() {
         }
     }
 
-    suspend fun restoreState(force: Boolean) {
+    suspend fun restoreState(force: Boolean, names: Collection<String>? = null) {
         if (!haveLoaded || (!force && !UserKnobs.restoreOnBoot.first()))
             return
         val previouslyRunning = UserKnobs.runningTunnels.first()
         if (previouslyRunning.isEmpty()) return
         withContext(Dispatchers.IO) {
             try {
-                tunnelMap.filter { previouslyRunning.contains(it.name) }.map { async(Dispatchers.IO + SupervisorJob()) { setTunnelState(it, Tunnel.State.UP) } }
+                tunnelMap.filter { previouslyRunning.contains(it.name) && (names == null || names.contains(it.name)) }.map { async(Dispatchers.IO + SupervisorJob()) { setTunnelState(it, Tunnel.State.UP) } }
                     .awaitAll()
             } catch (e: Throwable) {
                 Log.e(TAG, Log.getStackTraceString(e))
@@ -183,6 +205,7 @@ class TunnelManager(private val configStore: ConfigStore) : BaseObservable() {
     }
 
     suspend fun setTunnelConfig(tunnel: ObservableTunnel, config: Config): Config = withContext(Dispatchers.Main.immediate) {
+        check(!isPoolTunnel(tunnel)) { "Pool tunnel config is read-only" }
         tunnel.onConfigChanged(withContext(Dispatchers.IO) {
             getBackend().setState(tunnel, tunnel.state, config)
             configStore.save(tunnel.name, config)
@@ -206,7 +229,8 @@ class TunnelManager(private val configStore: ConfigStore) : BaseObservable() {
         try {
             if (originalState == Tunnel.State.UP)
                 withContext(Dispatchers.IO) { getBackend().setState(tunnel, Tunnel.State.DOWN, null) }
-            withContext(Dispatchers.IO) { configStore.rename(tunnel.name, name) }
+            if (!isPoolTunnel(tunnel))
+                withContext(Dispatchers.IO) { configStore.rename(tunnel.name, name) }
             newName = tunnel.onNameChanged(name)
             if (originalState == Tunnel.State.UP)
                 withContext(Dispatchers.IO) { getBackend().setState(tunnel, Tunnel.State.UP, tunnel.config) }
@@ -228,7 +252,12 @@ class TunnelManager(private val configStore: ConfigStore) : BaseObservable() {
         var newState = tunnel.state
         var throwable: Throwable? = null
         try {
-            newState = withContext(Dispatchers.IO) { getBackend().setState(tunnel, state, tunnel.getConfigAsync()) }
+            val config: Config? = when {
+                !isPoolTunnel(tunnel) -> tunnel.getConfigAsync()
+                state == Tunnel.State.UP -> loadPoolConfig(tunnel) // login + download, may throw
+                else -> null // DOWN needs no config, and tunnel.config would try to load one
+            }
+            newState = withContext(Dispatchers.IO) { getBackend().setState(tunnel, state, config) }
             if (newState == Tunnel.State.UP)
                 lastUsedTunnel = tunnel
         } catch (e: Throwable) {

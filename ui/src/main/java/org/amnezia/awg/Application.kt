@@ -21,7 +21,14 @@ import org.amnezia.awg.backend.Backend
 import org.amnezia.awg.backend.GoBackend
 import org.amnezia.awg.backend.AwgQuickBackend
 import org.amnezia.awg.configStore.FileConfigStore
+import org.amnezia.awg.model.TunnelComparator
 import org.amnezia.awg.model.TunnelManager
+import org.amnezia.awg.model.TunnelManagerGateway
+import com.remotepool.PoolManager
+import com.remotepool.RemotePoolRepository
+import com.remotepool.secrets.SecretsManager
+import com.remotepool.storage.PoolStore
+import java.io.File
 import org.amnezia.awg.util.NetworkState
 import org.amnezia.awg.util.NetworkType
 import org.amnezia.awg.util.RootShell
@@ -49,6 +56,7 @@ class Application : android.app.Application() {
     private lateinit var preferencesDataStore: DataStore<Preferences>
     private lateinit var toolsInstaller: ToolsInstaller
     private lateinit var tunnelManager: TunnelManager
+    private lateinit var poolManager: PoolManager
     private lateinit var networkState: NetworkState
 
     override fun attachBaseContext(context: Context) {
@@ -110,7 +118,17 @@ class Application : android.app.Application() {
             AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM)
         }
         tunnelManager = TunnelManager(FileConfigStore(applicationContext))
+        val secretsManager = SecretsManager.get(applicationContext)
+        poolManager = PoolManager(
+            poolStore = PoolStore(File(filesDir, "pools")),
+            secretsManager = secretsManager,
+            repository = RemotePoolRepository(secretsManager),
+            tunnels = TunnelManagerGateway(tunnelManager),
+            scope = coroutineScope,
+            nameComparator = TunnelComparator
+        )
         tunnelManager.onCreate()
+        poolManager.onCreate() // waits for the tunnels itself
 
         // Initialize network state monitor for auto-reconnection
         networkState = NetworkState(applicationContext) { oldType, newType ->
@@ -202,6 +220,8 @@ class Application : android.app.Application() {
         fun getToolsInstaller() = get().toolsInstaller
 
         fun getTunnelManager() = get().tunnelManager
+
+        fun getPoolManager() = get().poolManager
 
         fun getCoroutineScope() = get().coroutineScope
 

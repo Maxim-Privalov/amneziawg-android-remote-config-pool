@@ -64,6 +64,7 @@ android {
 
 dependencies {
     implementation(project(":tunnel"))
+    implementation(project(":remotePool"))
     implementation(libs.androidx.activity.ktx)
     implementation(libs.androidx.annotation)
     implementation(libs.androidx.appcompat)

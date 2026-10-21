@@ -7,6 +7,7 @@ package org.amnezia.awg.model
 import android.util.Log
 import androidx.databinding.BaseObservable
 import androidx.databinding.Bindable
+import org.amnezia.awg.Application.Companion.getPoolManager
 import org.amnezia.awg.BR
 import org.amnezia.awg.backend.Statistics
 import org.amnezia.awg.backend.Tunnel
@@ -33,9 +34,14 @@ class ObservableTunnel internal constructor(
     override fun getName() = name
 
     suspend fun setNameAsync(name: String): String = withContext(Dispatchers.Main.immediate) {
-        if (name != this@ObservableTunnel.name)
-            manager.setTunnelName(this@ObservableTunnel, name)
-        else
+        if (name != this@ObservableTunnel.name) {
+            // a pool also has to be renamed in its own storage, PoolManager then calls back into manager
+            val pools = getPoolManager()
+            if (pools.isPool(this@ObservableTunnel.name))
+                pools.setPoolName(this@ObservableTunnel.name, name)
+            else
+                manager.setTunnelName(this@ObservableTunnel, name)
+        } else
             this@ObservableTunnel.name
     }
 
@@ -162,7 +168,10 @@ class ObservableTunnel internal constructor(
     }
 
 
-    suspend fun deleteAsync() = manager.delete(this)
+    suspend fun deleteAsync() {
+        val pools = getPoolManager()
+        if (pools.isPool(name)) pools.delete(name) else manager.delete(this)
+    }
 
 
     companion object {
