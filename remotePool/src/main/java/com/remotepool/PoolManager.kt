@@ -4,6 +4,7 @@ import android.util.Log
 import com.remotepool.exceptions.InvalidPoolNameException
 import com.remotepool.exceptions.PoolAlreadyExistsException
 import com.remotepool.exceptions.PoolBusyException
+import com.remotepool.exceptions.PoolConnectionException
 import com.remotepool.exceptions.PoolNotFoundException
 import com.remotepool.exceptions.RemoteAuthException
 import com.remotepool.exceptions.RemoteConfigNotFoundException
@@ -14,7 +15,7 @@ import com.remotepool.storage.PoolStore
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import com.remotepool.PoolConnectionException.Stage
+import com.remotepool.exceptions.PoolConnectionException.Stage
 import com.remotepool.exceptions.PoolException
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -50,6 +51,7 @@ class PoolManager(
     private val loaded = CompletableDeferred<Unit>()
     private val poolMap = HashMap<String, Pool>()
     private val poolOrder = Comparator<Pool> { a, b -> nameComparator.compare(a.poolName, b.poolName) }
+    private val connecting = HashMap<String, Int>()
 
     private val _pools = MutableStateFlow<List<Pool>>(emptyList())
 

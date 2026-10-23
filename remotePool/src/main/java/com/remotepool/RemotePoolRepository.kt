@@ -1,6 +1,9 @@
 package com.remotepool
 
+import android.util.Base64
+import android.util.Log
 import com.google.gson.JsonElement
+import com.google.gson.JsonParser
 import com.remotepool.exceptions.RemoteAuthException
 import com.remotepool.exceptions.RemoteHttpException
 import com.remotepool.models.AuthUser
@@ -18,6 +21,9 @@ import retrofit2.http.Path
 import retrofit2.http.Query
 import java.io.IOException
 import java.util.concurrent.TimeUnit
+import com.google.gson.Gson
+import com.google.gson.annotations.SerializedName
+import com.google.gson.reflect.TypeToken
 
 
 // KeyStone
@@ -26,7 +32,8 @@ private data class KsUser(val name: String, val domain: KsDomain, val password: 
 private data class KsPassword(val user: KsUser)
 private data class KsIdentity(val methods: List<String>, val password: KsPassword)
 private data class KsProject(val name: String, val domain: KsDomain)
-private data class KsAuth(val identity: KsIdentity, val project: KsProject)
+private data class KsScope(val project: KsProject)
+private data class KsAuth(val identity: KsIdentity, val scope: KsScope)
 private data class KsRequest(val auth: KsAuth)
 
 
@@ -49,6 +56,20 @@ private interface SecretsApi {
     ): ResponseBody
 }
 
+data class VersionSecret(
+    @SerializedName("version_id") val versionId: Int,
+    @SerializedName("created_at") val createdAt: String,
+    @SerializedName("is_current") val isCurrent: Boolean,
+    val value: String
+)
+
+data class ResponseSecret(
+    val name: String,
+    val description: String,
+    val version : VersionSecret,
+    @SerializedName("created_at") val createdAt : String
+)
+
 class RemotePoolRepository() {
 
     private companion object {
@@ -64,6 +85,7 @@ class RemotePoolRepository() {
     private var pattern: Regex = buildPattern(DEFAULT_PREFIX)
 
     private val retrofit: Retrofit by lazy {
+
         val client = OkHttpClient.Builder()
             .connectTimeout(15, TimeUnit.SECONDS)
             .readTimeout(30, TimeUnit.SECONDS)
@@ -91,10 +113,11 @@ class RemotePoolRepository() {
                     methods = listOf("password"),
                     password = KsPassword(KsUser(credentials.username, domain, password))
                 ),
-                project = KsProject(credentials.projectName, domain)
+                scope = KsScope(
+                    project=KsProject(credentials.projectName, domain)
+                )
             )
         )
-        print(request.toString())
         val response = identityApi.auth(request)
         if (!response.isSuccessful) throw httpError(response.code())
         return response.headers()["X-Subject-Token"]
@@ -120,7 +143,10 @@ class RemotePoolRepository() {
 
     suspend fun getLastConfig(token: String): String? = remote {
         val last = fetchEntries(token).maxByOrNull { it.number } ?: return@remote null
-        secretsApi.get(token, last.key).use { it.string() }
+        val serializedResponse = secretsApi.get(token, last.key).use { it.string() }
+        val responseObject = Gson().fromJson(serializedResponse, ResponseSecret::class.java)
+        String(Base64.decode(responseObject.version.value, Base64.DEFAULT), Charsets.UTF_8)
+
     }
 
     private fun httpError(code: Int): IOException =

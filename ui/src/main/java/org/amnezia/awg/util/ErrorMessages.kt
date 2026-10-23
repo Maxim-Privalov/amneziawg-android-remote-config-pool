@@ -15,7 +15,7 @@ import com.remotepool.exceptions.PoolBusyException
 import com.remotepool.exceptions.PoolNotFoundException
 import com.remotepool.exceptions.RemoteAuthException
 import com.remotepool.exceptions.RemoteConfigNotFoundException
-import com.remotepool.PoolConnectionException
+import com.remotepool.exceptions.PoolConnectionException
 import com.remotepool.exceptions.RemoteHttpException
 import org.amnezia.awg.Application
 import org.amnezia.awg.R

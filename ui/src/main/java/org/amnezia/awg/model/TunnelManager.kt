@@ -27,8 +27,8 @@ import org.amnezia.awg.util.ErrorMessages
 import org.amnezia.awg.util.UserKnobs
 import org.amnezia.awg.util.applicationScope
 import org.amnezia.awg.config.Config
-import com.remotepool.PoolConnectionException
-import com.remotepool.PoolNotFoundException
+import com.remotepool.exceptions.PoolConnectionException
+import com.remotepool.exceptions.PoolNotFoundException
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
