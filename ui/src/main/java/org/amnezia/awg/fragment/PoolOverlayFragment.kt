@@ -4,6 +4,7 @@ import android.graphics.drawable.VectorDrawable
 import android.util.Log
 import android.view.View
 import android.widget.TextView
+import androidx.activity.ComponentActivity
 import androidx.lifecycle.findViewTreeLifecycleOwner
 import androidx.lifecycle.lifecycleScope
 import com.google.android.material.button.MaterialButton
@@ -29,7 +30,7 @@ import org.amnezia.awg.widget.NameInputFilter
  * PoolManager refuses edits of a connected pool, the error is shown in the dialog.
  */
 class PoolOverlayFragment(
-
+    private val activity: ComponentActivity,
     private val overlay: View,
     private val onCreated: () -> Unit
     ) {
@@ -94,6 +95,7 @@ class PoolOverlayFragment(
         try {
             val pools = Application.getPoolManager()
             pools.delete(editedPool!!)
+            activity.onBackPressedDispatcher.onBackPressed()
             close()
         } catch (e: Exception) {
             Log.e("PoolManager", "Undefined exception: ${e}")

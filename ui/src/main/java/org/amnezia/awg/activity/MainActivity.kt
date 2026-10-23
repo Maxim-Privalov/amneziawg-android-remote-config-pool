@@ -80,6 +80,7 @@ class MainActivity : BaseActivity(), FragmentManager.OnBackStackChangedListener 
         // updated overlay activity for DSN dialog
 
         poolOverlay = PoolOverlayFragment(
+            activity = this,
             overlay = findViewById(R.id.pool_overlay),
             onCreated = { /* обновить список туннелей */ }
         )

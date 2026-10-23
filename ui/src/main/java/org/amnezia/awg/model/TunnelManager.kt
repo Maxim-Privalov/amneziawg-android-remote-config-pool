@@ -37,7 +37,10 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import org.amnezia.awg.backend.AwgQuickBackend
 import java.io.ByteArrayInputStream
 
 /**
@@ -261,12 +264,35 @@ class TunnelManager(private val configStore: ConfigStore) : BaseObservable() {
 
     suspend fun setTunnelState(tunnel: ObservableTunnel, state: Tunnel.State): Tunnel.State = withContext(Dispatchers.Main.immediate) {
         // a pool is busy for the whole connect (token, download, parse, backend), not only once the state is UP
-        if (state == Tunnel.State.UP && isPoolTunnel(tunnel))
-            getPoolManager().withConnection(tunnel.name) { applyTunnelState(tunnel, state) }
-        else
-            applyTunnelState(tunnel, state)
+        if (state != Tunnel.State.UP) return@withContext applyTunnelState(tunnel, state)
+
+        switchMutex.withLock {
+            releaseOthers(tunnel)
+            if (isPoolTunnel(tunnel))
+                getPoolManager().withConnection(tunnel.name) { applyTunnelState(tunnel, state) }
+            else
+                applyTunnelState(tunnel, state)
+        }
     }
 
+    private val switchMutex = Mutex()
+
+    private suspend fun allowsMultipleTunnels() =
+        getBackend() is AwgQuickBackend && UserKnobs.multipleTunnels.first()
+
+    /** Гасит все туннели, кроме [target], ещё до логина и скачивания конфига нового пула. */
+    private suspend fun releaseOthers(target: ObservableTunnel) {
+        if (allowsMultipleTunnels()) return
+        tunnelMap
+            .filter { it !== target && it.state != Tunnel.State.DOWN }
+            .forEach {
+                try {
+                    applyTunnelState(it, Tunnel.State.DOWN)
+                } catch (e: Throwable) {
+                    Log.e(TAG, "Couldn't bring down ${it.name}", e)
+                }
+            }
+    }
     private suspend fun applyTunnelState(tunnel: ObservableTunnel, state: Tunnel.State): Tunnel.State {
         var newState = tunnel.state
         var throwable: Throwable? = null
