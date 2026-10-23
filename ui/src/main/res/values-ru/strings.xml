@@ -124,7 +124,7 @@
     <string name="create_from_qr_code">Сканировать QR-код</string>
     <string name="create_output_dir_error">Не удалось создать выходной каталог</string>
     <string name="create_temp_dir_error">Не удалось создать временный локальный каталог</string>
-    <string name="create_tunnel">Создать туннель</string>
+    <string name="create_tunnel">Добавить пул</string>
     <string name="copied_to_clipboard">Скопирован(о) в буфер обмена: %s</string>
     <string name="dark_theme_summary_off">В данный момент используется светлая (дневная) тема</string>
     <string name="dark_theme_summary_on">В данный момент используется темная (ночная) тема</string>
@@ -295,4 +295,5 @@
     <string name="pool_stage_auth">Не удалось войти в удалённое хранилище: %s</string>
     <string name="pool_stage_download">Не удалось скачать конфиг: %s</string>
     <string name="pool_stage_parse">Скачанный конфиг некорректен: %s</string>
+    <string name="remove_pool">Удалить пул</string>
 </resources>

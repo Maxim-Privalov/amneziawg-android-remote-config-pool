@@ -1,5 +1,6 @@
 package org.amnezia.awg.fragment
 
+import android.graphics.drawable.VectorDrawable
 import android.util.Log
 import android.view.View
 import android.widget.TextView
@@ -29,91 +30,6 @@ import org.amnezia.awg.widget.NameInputFilter
  */
 class PoolOverlayFragment(
 
-    /*
-    private lateinit var nameLayout: TextInputLayout
-    private lateinit var nameInput: TextInputEditText
-    private lateinit var dsnLayout: TextInputLayout
-    private lateinit var dsnInput: TextInputEditText
-    private lateinit var errorText: TextView
-    private lateinit var progress: LinearProgressIndicator
-
-    override fun onCreateDialog(savedInstanceState: Bundle?): Dialog {
-        val activity = requireActivity()
-        val content = activity.layoutInflater.inflate(R.layout.dialog_input, null)
-        nameLayout = content.findViewById(R.id.pool_name_layout)
-        nameInput = content.findViewById(R.id.pool_name_input)
-        dsnLayout = content.findViewById(R.id.dsn_layout)
-        dsnInput = content.findViewById(R.id.dsn_input)
-        errorText = content.findViewById(R.id.error_text)
-        progress = content.findViewById(R.id.progress)
-        nameInput.filters = arrayOf(NameInputFilter.newInstance())
-
-        val dialog = MaterialAlertDialogBuilder(activity)
-            .setTitle(R.string.dialog_title_pool_connection)
-            .setView(content)
-            .setPositiveButton(R.string.create_tunnel, null) // overridden in onStart: errors must keep the dialog open
-            .setNegativeButton(R.string.cancel, null)
-            .create()
-        dialog.window?.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE)
-        return dialog
-    }
-
-    override fun onStart() {
-        super.onStart()
-        (dialog as? AlertDialog)?.getButton(AlertDialog.BUTTON_POSITIVE)?.setOnClickListener { submit() }
-    }
-
-    private fun submit() {
-        clearErrors()
-        val name = nameInput.text.toString().trim()
-        val dsn = try {
-            PoolDsn.parse(dsnInput.text.toString())
-        } catch (e: InvalidDsnException) {
-            showError(e)
-            return
-        }
-        setBusy(true)
-        lifecycleScope.launch {
-            try {
-                Application.getPoolManager().create(name, dsn.user, dsn.password)
-                dismiss()
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Throwable) {
-                Log.e(TAG, "Unable to add pool", e)
-                setBusy(false)
-                showError(e)
-            }
-        }
-    }
-
-    private fun showError(e: Throwable) {
-        val message = ErrorMessages[e]
-        when (e) {
-            is InvalidPoolNameException, is PoolAlreadyExistsException -> nameLayout.error = message
-            is InvalidDsnException -> dsnLayout.error = message
-            else -> errorText.apply { text = message; visibility = View.VISIBLE }
-        }
-    }
-
-    private fun clearErrors() {
-        nameLayout.error = null
-        dsnLayout.error = null
-        errorText.visibility = View.GONE
-    }
-
-    /** While a request is in flight nothing can be edited or pressed twice. */
-    private fun setBusy(busy: Boolean) {
-        progress.visibility = if (busy) View.VISIBLE else View.GONE
-        nameInput.isEnabled = !busy
-        dsnInput.isEnabled = !busy
-        (dialog as? AlertDialog)?.apply {
-            getButton(AlertDialog.BUTTON_POSITIVE)?.isEnabled = !busy
-            getButton(AlertDialog.BUTTON_NEGATIVE)?.isEnabled = !busy
-        }
-        isCancelable = !busy
-    }
-     */
     private val overlay: View,
     private val onCreated: () -> Unit
     ) {
@@ -129,6 +45,7 @@ class PoolOverlayFragment(
     private val progress = overlay.findViewById<LinearProgressIndicator>(R.id.progress)
     private val createBtn = overlay.findViewById<MaterialButton>(R.id.pool_create)
     private val cancelBtn = overlay.findViewById<MaterialButton>(R.id.pool_cancel)
+    private val removeBtn = overlay.findViewById<MaterialButton>(R.id.pool_remove)
 
     private val scope = overlay.findViewTreeLifecycleOwner()!!.lifecycleScope
 
@@ -136,10 +53,7 @@ class PoolOverlayFragment(
         nameInput.filters = arrayOf(NameInputFilter.newInstance())
         cancelBtn.setOnClickListener { close() }
         createBtn.setOnClickListener { submit() }
-
-        val editing = editedPool != null
-        titleView.setText(if (editing) R.string.pool_edit_title else R.string.dialog_title_pool_connection)
-        createBtn.setText(if (editing) R.string.save else R.string.create_tunnel)
+        removeBtn.setOnClickListener { remove() }
     }
 
     fun isOpen(): Boolean = overlay.visibility == View.VISIBLE
@@ -152,9 +66,14 @@ class PoolOverlayFragment(
         val editing = editedPool != null
         if (editing) {
             nameInput.setText(editedPool)
+            createBtn.setText(R.string.save)
+            titleView.setText(R.string.pool_edit_title)
             dsnLayout.helperText = overlay.context.getString(R.string.pool_dsn_keep_hint)
         } else {
             nameInput.setText("")
+            removeBtn.visibility = View.GONE
+            titleView.setText(R.string.dialog_title_pool_connection)
+            createBtn.setText(R.string.create_tunnel)
             dsnLayout.helperText = null
         }
         // заголовок/кнопка — см. пункт 3
@@ -171,10 +90,22 @@ class PoolOverlayFragment(
         clearErrors()
     }
 
+    private fun remove() = scope.launch {
+        try {
+            val pools = Application.getPoolManager()
+            pools.delete(editedPool!!)
+            close()
+        } catch (e: Exception) {
+            Log.e("PoolManager", "Undefined exception: ${e}")
+            showError(e)
+        }
+    }
+
     private fun submit() {
         clearErrors()
         val name = nameInput.text.toString().trim()
-        val dsn = try {
+        val dsn = if (editedPool != null && dsnInput.text.toString().trim() == "") null
+        else try {
             PoolDsn.parse(dsnInput.text.toString())
         } catch (e: InvalidDsnException) {
             showError(e); return

@@ -101,6 +101,7 @@ class MainActivity : BaseActivity(), FragmentManager.OnBackStackChangedListener 
             android.R.id.home -> {
                 // The back arrow in the action bar should act the same as the back button.
                 onBackPressedDispatcher.onBackPressed()
+                if (poolOverlay.isOpen()) poolOverlay.close()
                 true
             }
 
