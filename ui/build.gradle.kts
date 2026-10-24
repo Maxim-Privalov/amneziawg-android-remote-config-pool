@@ -62,6 +62,21 @@ android {
     }
 }
 
+androidComponents {
+    onVariants { variant ->
+        variant.outputs.forEach { output ->
+            if (output is com.android.build.api.variant.impl.VariantOutputImpl) {
+                // Получаем versionName из output, а не из variant
+                val versionName = output.versionName.get()
+                val buildType = variant.buildType
+
+                // Задаём желаемое имя файла
+                output.outputFileName.set("AmneziaWG-Remote-Pool-${versionName}.apk")
+            }
+        }
+    }
+}
+
 dependencies {
     implementation(project(":tunnel"))
     implementation(project(":remotePool"))
