@@ -11,7 +11,22 @@ plugins {
     alias(libs.plugins.kotlin.kapt)
 }
 
+// Release signing: активно только если задан ANDROID_KEYSTORE_PATH (CI или локально).
+// Без него release-сборка остаётся unsigned, а debug/googleplay не ломаются.
+val releaseKeystorePath: String? = providers.environmentVariable("ANDROID_KEYSTORE_PATH").orNull
+
 android {
+    signingConfigs {
+        if (releaseKeystorePath != null) {
+            create("release") {
+                val storePass = providers.environmentVariable("ANDROID_KEYSTORE_PASSWORD").get()
+                storeFile = file(releaseKeystorePath)
+                storePassword = storePass
+                keyAlias = providers.environmentVariable("ANDROID_KEY_ALIAS").get()
+                keyPassword = providers.environmentVariable("ANDROID_KEY_PASSWORD").orNull ?: storePass
+            }
+        }
+    }
     buildFeatures {
         buildConfig = true
         dataBinding = true
@@ -34,7 +49,7 @@ android {
         release {
             isMinifyEnabled = true
             isShrinkResources = true
-            signingConfig = null
+            signingConfig = signingConfigs.findByName("release")
             proguardFiles("proguard-android-optimize.txt")
             packaging {
                 resources {
